@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cubby Status Dashboard — Berkeley Event Services</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f8f5;
+      --surface: #ffffff;
+      --surface-2: #f1f0ec;
+      --text-primary: #1a1a18;
+      --text-secondary: #6b6a65;
+      --border: rgba(0,0,0,0.1);
+      --border-strong: rgba(0,0,0,0.18);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+
+      --green-bg: #E1F5EE;
+      --green-border: #9FE1CB;
+      --green-text: #085041;
+      --green-muted: #0F6E56;
+
+      --amber-bg: #FAEEDA;
+      --amber-border: #FAC775;
+      --amber-text: #633806;
+      --amber-muted: #854F0B;
+
+      --red-bg: #FCEBEB;
+      --red-border: #F7C1C1;
+      --red-text: #791F1F;
+      --red-muted: #A32D2D;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --surface: #242422;
+        --surface-2: #2e2e2b;
+        --text-primary: #f0ede6;
+        --text-secondary: #9a9891;
+        --border: rgba(255,255,255,0.1);
+        --border-strong: rgba(255,255,255,0.18);
+
+        --green-bg: #04342C;
+        --green-border: #0F6E56;
+        --green-text: #9FE1CB;
+        --green-muted: #5DCAA5;
+
+        --amber-bg: #412402;
+        --amber-border: #854F0B;
+        --amber-text: #FAC775;
+        --amber-muted: #EF9F27;
+
+        --red-bg: #501313;
+        --red-border: #A32D2D;
+        --red-text: #F7C1C1;
+        --red-muted: #F09595;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 1.25rem;
+      border-bottom: 0.5px solid var(--border-strong);
+      margin-bottom: 1.5rem;
+    }
+
+    .header-left .title {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .header-left .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 6px 14px;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .refresh-btn:hover { background: var(--surface-2); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat {
+      background: var(--surface-2);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+    }
+
+    .stat-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 500; color: var(--text-primary); }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .cubby-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 580px) {
+      .cubby-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .cubby-card {
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      padding: 1rem;
+      background: var(--surface);
+      transition: transform 0.1s;
+    }
+
+    .cubby-card:hover { transform: translateY(-1px); }
+
+    .cubby-card.empty   { border-color: var(--green-border); background: var(--green-bg); }
+    .cubby-card.has-item  { border-color: var(--amber-border); background: var(--amber-bg); }
+    .cubby-card.needs-action { border-color: var(--red-border);   background: var(--red-bg); }
+
+    .cubby-number { font-size: 11px; font-weight: 500; margin-bottom: 6px; }
+    .cubby-card.empty        .cubby-number { color: var(--green-muted); }
+    .cubby-card.has-item     .cubby-number { color: var(--amber-muted); }
+    .cubby-card.needs-action .cubby-number { color: var(--red-muted); }
+
+    .cubby-icon { font-size: 22px; margin-bottom: 6px; line-height: 1; }
+    .cubby-card.empty        .cubby-icon { color: var(--green-muted); }
+    .cubby-card.has-item     .cubby-icon { color: var(--amber-muted); }
+    .cubby-card.needs-action .cubby-icon { color: var(--red-muted); }
+
+    .cubby-status { font-size: 13px; font-weight: 500; }
+    .cubby-card.empty        .cubby-status { color: var(--green-text); }
+    .cubby-card.has-item     .cubby-status { color: var(--amber-text); }
+    .cubby-card.needs-action .cubby-status { color: var(--red-text); }
+
+    .cubby-desc { font-size: 12px; margin-top: 4px; }
+    .cubby-card.empty        .cubby-desc { color: var(--green-muted); }
+    .cubby-card.has-item     .cubby-desc { color: var(--amber-muted); }
+    .cubby-card.needs-action .cubby-desc { color: var(--red-muted); }
+
+    .last-updated {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      margin-top: 10px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .log-header {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding-bottom: 8px;
+      border-bottom: 0.5px solid var(--border-strong);
+    }
+
+    .log-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: var(--radius-md);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-clear  { background: var(--green-bg);  color: var(--green-text); }
+    .badge-item   { background: var(--amber-bg);  color: var(--amber-text); }
+    .badge-action { background: var(--red-bg);    color: var(--red-text); }
+
+    .placeholder {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .spinning { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <div class="header-left">
+        <div class="title">Cubby status dashboard</div>
+        <div class="subtitle">Berkeley Event Services — closing shift report</div>
+      </div>
+      <button class="refresh-btn" onclick="loadData()">
+        <i class="ti ti-refresh" id="refresh-icon" aria-hidden="true"></i> Refresh
+      </button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Empty</div><div class="stat-value" id="count-empty">—</div></div>
+      <div class="stat"><div class="stat-label">Has item</div><div class="stat-value" id="count-item">—</div></div>
+      <div class="stat"><div class="stat-label">Needs action</div><div class="stat-value" id="count-action">—</div></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#1D9E75;"></div> Empty</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#BA7517;"></div> Has item — check tonight</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#E24B4A;"></div> Needs action — move to lost & found</div>
+    </div>
+
+    <div class="cubby-grid" id="cubby-grid">
+      <div class="placeholder" style="grid-column:span 4;">
+        <i class="ti ti-refresh spinning" aria-hidden="true"></i> Loading cubby data...
+      </div>
+    </div>
+
+    <div class="last-updated" id="last-updated"></div>
+
+    <div class="section-title">Submission log</div>
+    <div class="log-header">
+      <span>Date</span><span>Shift lead</span><span>Summary</span>
+    </div>
+    <div id="log-rows">
+      <div class="placeholder">Loading...</div>
+    </div>
+
+  </div>
+
+  <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWgoWLh7Mzfh8JRrht_HcQx7_d-unIOg3EbsShvpnR2Ex8woE8sUFUUaqTlmBcoZ7zq1TbOq2ITIBa/pub?gid=314292496&single=true&output=csv";
+
+    function parseCSV(text) {
+      const lines = text.trim().split("\n");
+      const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
+      return lines.slice(1).map(line => {
+        const vals = [];
+        let cur = "", inQ = false;
+        for (let c of line) {
+          if (c === '"') inQ = !inQ;
+          else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ""; }
+          else cur += c;
+        }
+        vals.push(cur.trim());
+        const row = {};
+        headers.forEach((h, i) => row[h] = (vals[i] || "").replace(/^"|"$/g, "").trim());
+        return row;
+      });
+    }
+
+    function getCubbies(tonight, lastNight) {
+      return Array.from({ length: 8 }, (_, idx) => {
+        const i = idx + 1;
+        const statusKey = `Cubby ${i} Status`;
+        const descKey = `Cubby ${i} Item Description (If item, briefly describe it)`;
+        const status = (tonight[statusKey] || "").toLowerCase();
+        const desc = tonight[descKey] || "";
+        const prevStatus = lastNight ? (lastNight[statusKey] || "").toLowerCase() : "";
+        let state = "empty";
+        if (status === "has item") {
+          state = prevStatus === "has item" ? "needs-action" : "has-item";
+        }
+        return { cubby: i, state, desc };
+      });
+    }
+
+    function renderCubbies(cubbies) {
+      let empty = 0, item = 0, action = 0;
+      document.getElementById("cubby-grid").innerHTML = cubbies.map(c => {
+        if (c.state === "empty") empty++;
+        else if (c.state === "has-item") item++;
+        else action++;
+        const icon = c.state === "empty" ? "ti-lock-open" : c.state === "has-item" ? "ti-box" : "ti-alert-triangle";
+        const label = c.state === "empty" ? "Empty" : c.state === "has-item" ? "Has item" : "Move to lost & found";
+        return `<div class="cubby-card ${c.state}">
+          <div class="cubby-number">Cubby ${c.cubby}</div>
+          <div class="cubby-icon"><i class="ti ${icon}" aria-hidden="true"></i></div>
+          <div class="cubby-status">${label}</div>
+          ${c.desc ? `<div class="cubby-desc">${c.desc}</div>` : ""}
+        </div>`;
+      }).join("");
+      document.getElementById("count-empty").textContent = empty;
+      document.getElementById("count-item").textContent = item;
+      document.getElementById("count-action").textContent = action;
+    }
+
+    function renderLog(rows) {
+      const el = document.getElementById("log-rows");
+      if (!rows.length) { el.innerHTML = '<div class="placeholder">No submissions yet.</div>'; return; }
+      el.innerHTML = rows.slice().reverse().slice(0, 15).map(row => {
+        const date = row["Date"] || "—";
+        const lead = row["Name"] || "—";
+        let items = 0, action = 0;
+        for (let i = 1; i <= 8; i++) {
+          const s = (row[`Cubby ${i} Status`] || "").toLowerCase();
+          if (s === "has item") items++;
+        }
+        const badge = items === 0
+          ? `<span class="badge badge-clear">All clear</span>`
+          : `<span class="badge badge-item">${items} item${items > 1 ? "s" : ""} found</span>`;
+        return `<div class="log-row"><span>${date}</span><span>${lead}</span><span>${badge}</span></div>`;
+      }).join("");
+    }
+
+    async function loadData() {
+      const icon = document.getElementById("refresh-icon");
+      icon.classList.add("spinning");
+      try {
+        const res = await fetch(CSV_URL);
+        const text = await res.text();
+        const rows = parseCSV(text).filter(r => r["Timestamp"]);
+        if (!rows.length) {
+          document.getElementById("cubby-grid").innerHTML = '<div class="placeholder" style="grid-column:span 4;">No submissions found.</div>';
+          icon.classList.remove("spinning");
+          return;
+        }
+        const tonight = rows[rows.length - 1];
+        const lastNight = rows.length > 1 ? rows[rows.length - 2] : null;
+        renderCubbies(getCubbies(tonight, lastNight));
+        renderLog(rows);
+        const lead = tonight["Name"] || "unknown";
+        const ts = tonight["Timestamp"] || "unknown";
+        document.getElementById("last-updated").textContent = `Last updated: ${ts} · Shift lead: ${lead}`;
+      } catch (e) {
+        document.getElementById("cubby-grid").innerHTML = '<div class="placeholder" style="grid-column:span 4;">Could not load data. Check that the Google Sheet is published as CSV.</div>';
+        document.getElementById("log-rows").innerHTML = "";
+      }
+      icon.classList.remove("spinning");
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
